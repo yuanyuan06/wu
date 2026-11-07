@@ -570,6 +570,9 @@ pub enum ContextMenuPlacement {
 #[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Debug, Default)]
 struct EditorActionId(usize);
 
+/// Identifies the toast shown when a selection can't be rewritten as JSON.
+struct JsonSelectionToast;
+
 impl EditorActionId {
     pub fn post_inc(&mut self) -> Self {
         let answer = self.0;
@@ -7148,6 +7151,170 @@ impl Editor {
 
             this.request_autoscroll(Autoscroll::fit(), cx);
         });
+    }
+
+    pub fn format_json_selections(
+        &mut self,
+        _: &FormatJsonSelections,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.rewrite_json_selections(json_tool::JsonSelectionMode::Pretty, window, cx);
+    }
+
+    pub fn minify_json_selections(
+        &mut self,
+        _: &MinifyJsonSelections,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.rewrite_json_selections(json_tool::JsonSelectionMode::Minify, window, cx);
+    }
+
+    pub fn toggle_json_selections(
+        &mut self,
+        _: &ToggleJsonSelections,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.rewrite_json_selections(json_tool::JsonSelectionMode::Toggle, window, cx);
+    }
+
+    /// Rewrites every selection as JSON, either minified or formatted.
+    ///
+    /// All selections are transformed before any edit is applied, so a single
+    /// invalid selection leaves the buffer untouched instead of half rewritten.
+    ///
+    /// Both transforms are driven by the token stream (see [`json_tool`]), so
+    /// minifying only removes whitespace and formatting only adds it: key order,
+    /// number literals and string escapes survive unchanged.
+    fn rewrite_json_selections(
+        &mut self,
+        mode: json_tool::JsonSelectionMode,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.read_only(cx) || !self.mode.is_full() {
+            return;
+        }
+
+        if self.buffer.read(cx).as_singleton().is_none() {
+            // Display coordinates of an aggregated view, such as search results,
+            // don't map onto buffer offsets, so only plain editors are rewritten.
+            return;
+        }
+
+        let buffer = self.buffer.read(cx).snapshot(cx);
+        let selections = self.selections.all_adjusted(&self.display_snapshot(cx));
+        let selection_count = selections.len();
+        let mut edits = Vec::new();
+        let mut new_selections = Vec::new();
+
+        for (index, selection) in selections.into_iter().enumerate() {
+            // Multi-cursor selections are often empty; only an entirely empty
+            // selection set is reported to the user.
+            if selection.is_empty() {
+                continue;
+            }
+
+            let start = buffer.point_to_offset(selection.start);
+            let end = buffer.point_to_offset(selection.end);
+            let text = buffer.text_for_range(start..end).collect::<String>();
+            let trimmed = text.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+
+            let settings = buffer.language_settings_at(selection.start, cx);
+            let indent_unit = if settings.hard_tabs {
+                "\t".to_string()
+            } else {
+                " ".repeat(settings.tab_size.get() as usize)
+            };
+
+            let rewritten = match json_tool::transform(trimmed, mode, &indent_unit) {
+                Ok(rewritten) => rewritten,
+                Err(error) => {
+                    let message = if selection_count > 1 {
+                        t!(
+                            "Selection {index} is not valid JSON: {error}",
+                            index = index + 1,
+                            error = error
+                        )
+                    } else {
+                        t!("Not valid JSON: {error}", error = error)
+                    };
+                    self.show_selection_toast(message, cx);
+                    return;
+                }
+            };
+
+            let line_start = buffer.point_to_offset(Point::new(selection.start.row, 0));
+            let line_indent = buffer
+                .text_for_range(line_start..start)
+                .flat_map(str::chars)
+                .take_while(|character| *character == ' ' || *character == '\t')
+                .collect::<String>();
+
+            let mut replacement = String::with_capacity(rewritten.len());
+            for (row, line) in rewritten.lines().enumerate() {
+                if row > 0 {
+                    replacement.push('\n');
+                    replacement.push_str(&line_indent);
+                }
+                replacement.push_str(line);
+            }
+
+            let leading = text.len() - text.trim_start().len();
+            let edit_start = start + leading;
+            let edit_end = edit_start + trimmed.len();
+
+            if replacement != trimmed {
+                edits.push((edit_start..edit_end, replacement));
+            }
+
+            new_selections.push(Selection {
+                start: buffer.anchor_before(edit_start),
+                end: buffer.anchor_after(edit_end),
+                goal: SelectionGoal::None,
+                id: selection.id,
+                reversed: selection.reversed,
+            });
+        }
+
+        if new_selections.is_empty() {
+            self.show_selection_toast(t!("Select a JSON value to minify or format."), cx);
+            return;
+        }
+
+        if edits.is_empty() {
+            return;
+        }
+
+        self.transact(window, cx, |this, window, cx| {
+            this.buffer.update(cx, |buffer, cx| {
+                buffer.edit(edits, None, cx);
+            });
+
+            this.change_selections(Default::default(), window, cx, |selections| {
+                selections.select(new_selections);
+            });
+
+            this.request_autoscroll(Autoscroll::fit(), cx);
+        });
+    }
+
+    fn show_selection_toast(&self, message: SharedString, cx: &mut Context<Self>) {
+        let Some(workspace) = self.workspace() else {
+            log::warn!("{}", message.as_ref());
+            return;
+        };
+
+        let toast = Toast::new(
+            NotificationId::unique::<JsonSelectionToast>(),
+            message.to_string(),
+        );
+        workspace.update(cx, |workspace, cx| workspace.show_toast(toast, cx));
     }
 
     pub fn move_selection_on_drop(

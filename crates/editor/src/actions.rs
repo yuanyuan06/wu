@@ -570,6 +570,21 @@ actions!(
         /// edits outside the selected ranges are discarded. External command formatters do not
         /// support range formatting and are skipped.
         FormatSelections,
+        /// Formats the selected JSON with the buffer's indentation settings.
+        ///
+        /// Each selection must be a complete, valid JSON value. The formatted text is
+        /// reindented to match the line the selection starts on.
+        FormatJsonSelections,
+        /// Minifies the selected JSON.
+        ///
+        /// Each selection must be a complete, valid JSON value. Only the whitespace
+        /// between tokens is removed, so key order, number literals and string escapes
+        /// are left byte-for-byte unchanged.
+        MinifyJsonSelections,
+        /// Minifies the selected JSON if it spans multiple lines, and formats it otherwise.
+        ///
+        /// Each selection must be a complete, valid JSON value.
+        ToggleJsonSelections,
         /// Goes to declaration in a split pane.
         GoToDeclarationSplit,
         /// Goes to definition in a split pane.

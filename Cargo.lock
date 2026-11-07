@@ -3144,6 +3144,7 @@ dependencies = [
  "i18n",
  "indoc",
  "itertools 0.14.0",
+ "json_tool",
  "language",
  "language_detection",
  "languages",
@@ -5993,6 +5994,13 @@ dependencies = [
  "task",
  "theme",
  "util",
+]
+
+[[package]]
+name = "json_tool"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
 ]
 
 [[package]]

@@ -8118,6 +8118,119 @@ async fn test_convert_to_base64(cx: &mut TestAppContext) {
 }
 
 #[gpui::test]
+async fn test_minify_and_format_json_selections(cx: &mut TestAppContext) {
+    init_test(cx, |settings| {
+        settings.defaults.tab_size = NonZeroU32::new(4);
+    });
+
+    let mut cx = EditorTestContext::new(cx).await;
+
+    // Minifying removes only the whitespace between tokens.
+    cx.set_state(indoc! {"
+        «{
+          \"a\": 1,
+          \"b\": [2, 3]
+        }ˇ»
+    "});
+    cx.update_editor(|editor, window, cx| {
+        editor.minify_json_selections(&MinifyJsonSelections, window, cx)
+    });
+    cx.assert_editor_state(indoc! {"
+        «{\"a\":1,\"b\":[2,3]}ˇ»
+    "});
+
+    // Formatting a selection keeps the indentation of the line it starts on.
+    cx.set_state(indoc! {"
+        fn main() {
+            «{\"a\":1,\"b\":[2,3]}ˇ»
+        }
+    "});
+    cx.update_editor(|editor, window, cx| {
+        editor.format_json_selections(&FormatJsonSelections, window, cx)
+    });
+    cx.assert_editor_state(indoc! {"
+        fn main() {
+            «{
+                \"a\": 1,
+                \"b\": [
+                    2,
+                    3
+                ]
+            }ˇ»
+        }
+    "});
+
+    // Toggling minifies a multi-line selection and formats a single-line one.
+    cx.update_editor(|editor, window, cx| {
+        editor.toggle_json_selections(&ToggleJsonSelections, window, cx)
+    });
+    cx.assert_editor_state(indoc! {"
+        fn main() {
+            «{\"a\":1,\"b\":[2,3]}ˇ»
+        }
+    "});
+    cx.update_editor(|editor, window, cx| {
+        editor.toggle_json_selections(&ToggleJsonSelections, window, cx)
+    });
+    cx.assert_editor_state(indoc! {"
+        fn main() {
+            «{
+                \"a\": 1,
+                \"b\": [
+                    2,
+                    3
+                ]
+            }ˇ»
+        }
+    "});
+}
+
+#[gpui::test]
+async fn test_json_selections_left_alone_when_not_valid_json(cx: &mut TestAppContext) {
+    init_test(cx, |_| {});
+
+    let mut cx = EditorTestContext::new(cx).await;
+
+    // A trailing comma or a partial object is reported instead of rewritten.
+    for state in [
+        indoc! {"
+            «{\"a\": 1,}ˇ»
+        "},
+        indoc! {"
+            «\"a\": 1, \"b\": 2ˇ»
+        "},
+    ] {
+        cx.set_state(state);
+        cx.update_editor(|editor, window, cx| {
+            editor.minify_json_selections(&MinifyJsonSelections, window, cx)
+        });
+        cx.assert_editor_state(state);
+    }
+
+    // Without a selection there is nothing to rewrite.
+    cx.set_state(indoc! {"
+        ˇ{\"a\": 1}
+    "});
+    cx.update_editor(|editor, window, cx| {
+        editor.format_json_selections(&FormatJsonSelections, window, cx)
+    });
+    cx.assert_editor_state(indoc! {"
+        ˇ{\"a\": 1}
+    "});
+
+    // One invalid selection leaves the other selections untouched as well.
+    cx.set_state(indoc! {"
+        «{\"a\":1}ˇ» «{\"b\":2,}ˇ»
+    "});
+    cx.update_editor(|editor, window, cx| {
+        editor.minify_json_selections(&MinifyJsonSelections, window, cx)
+    });
+    cx.assert_editor_state(indoc! {"
+        «{\"a\":1}ˇ» «{\"b\":2,}ˇ»
+    "});
+}
+
+#[gpui::test]
 fn test_manipulate_text_handles_cross_excerpt_edit_that_applies_differently(
     cx: &mut TestAppContext,
 ) {

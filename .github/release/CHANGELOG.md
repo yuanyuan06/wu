@@ -4,6 +4,8 @@ All notable user-facing changes to Wu are listed here, newest first.
 
 ## Unreleased
 
+- Minify or format the selected JSON with `editor: minify JSON selection` and `editor: format JSON selection`, bound to `cmd-alt-m` and `cmd-alt-j` on macOS.
+
 ## 1.1.19 - 2026-11-07
 
 - Fix jank in git panel's history.

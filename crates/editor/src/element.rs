@@ -610,6 +610,9 @@ impl EditorElement {
             register_action(editor, window, Editor::convert_to_rot47);
             register_action(editor, window, Editor::convert_to_base64);
             register_action(editor, window, Editor::convert_from_base64);
+            register_action(editor, window, Editor::format_json_selections);
+            register_action(editor, window, Editor::minify_json_selections);
+            register_action(editor, window, Editor::toggle_json_selections);
             register_action(editor, window, Editor::delete_to_previous_word_start);
             register_action(editor, window, Editor::delete_to_previous_subword_start);
             register_action(editor, window, Editor::delete_to_next_word_end);

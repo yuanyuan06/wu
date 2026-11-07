@@ -359,6 +359,10 @@
     "name": "格式化文档",
     "description": "格式化整个文档。"
   },
+  "editor::FormatJsonSelections": {
+    "name": "格式化 JSON 选区",
+    "description": "使用缓冲区的缩进设置格式化选中的 JSON。\n\n每个选区都必须是完整、合法的 JSON 值。格式化后的文本会重新缩进，与选区起始行对齐。"
+  },
   "editor::FormatSelections": {
     "name": "格式化选区",
     "description": "只格式化所选文本。\n\n只有当前格式化程序支持格式化范围时，才能使用此命令。使用语言服务器时，会为每个选区发送一个 LSP 范围格式化请求；如果所选缓冲区配置的语言服务器不支持范围格式化，此命令会被隐藏。使用 Prettier 时，会用 Prettier 自带的范围格式化来格式化包含所有选区的范围，并丢弃所选范围之外的修改。外部命令格式化程序不支持范围格式化，会被跳过。"
@@ -506,6 +510,10 @@
   "editor::LineUp": {
     "name": "向上一行",
     "description": "将光标向上移动一行。"
+  },
+  "editor::MinifyJsonSelections": {
+    "name": "压缩 JSON 选区",
+    "description": "压缩选中的 JSON。\n\n每个选区都必须是完整、合法的 JSON 值。只会删除 token 之间的空白，因此键的顺序、数字字面量和字符串转义都逐字节保持不变。"
   },
   "editor::MoveDown": {
     "name": "向下移动",
@@ -1066,6 +1074,10 @@
   "editor::ToggleInlineValues": {
     "name": "切换行内值",
     "description": "显示或隐藏行内值。"
+  },
+  "editor::ToggleJsonSelections": {
+    "name": "切换 JSON 选区格式",
+    "description": "选中的 JSON 跨多行时压缩，否则格式化。\n\n每个选区都必须是完整、合法的 JSON 值。"
   },
   "editor::ToggleLineNumbers": {
     "name": "切换行号",

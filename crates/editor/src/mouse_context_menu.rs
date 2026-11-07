@@ -3,7 +3,7 @@ use crate::{
     EvaluateSelectedText, FindAllReferences, GoToDeclaration, GoToDefinition, GoToImplementation,
     GoToTypeDefinition, Paste, Rename, RevealInFileManager, RunToCursor, SelectMode,
     SelectionEffects, SelectionExt, ToDisplayPoint, ToggleCodeActions,
-    actions::{Format, FormatSelections},
+    actions::{Format, FormatJsonSelections, FormatSelections, MinifyJsonSelections},
     selections_collection::SelectionsCollection,
 };
 use gpui::prelude::FluentBuilder;
@@ -281,6 +281,10 @@ pub fn deploy_context_menu(
                 .action(t!("Format Buffer"), Box::new(Format))
                 .when(format_selections, |cx| {
                     cx.action(t!("Format Selections"), Box::new(FormatSelections))
+                })
+                .when(has_selections, |cx| {
+                    cx.action(t!("Format JSON Selection"), Box::new(FormatJsonSelections))
+                        .action(t!("Minify JSON Selection"), Box::new(MinifyJsonSelections))
                 })
                 .action(
                     t!("Show Code Actions"),

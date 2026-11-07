@@ -109,6 +109,8 @@
       "ctrl-l": "editor::SelectLine",
       "ctrl-shift-i": "editor::Format",
       "alt-shift-o": "editor::OrganizeImports",
+      "ctrl-alt-m": "editor::MinifyJsonSelections",
+      "ctrl-alt-j": "editor::FormatJsonSelections",
       "shift-home": ["editor::SelectToBeginningOfLine", { "stop_at_soft_wraps": true, "stop_at_indent": true }],
       "shift-end": ["editor::SelectToEndOfLine", { "stop_at_soft_wraps": true }],
       "ctrl-alt-space": "editor::ShowCharacterPalette",
